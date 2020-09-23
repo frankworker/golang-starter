@@ -30,6 +30,26 @@ func homeLink(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome home!")
 }
 
+func initEvents() {
+	events = allEvents{
+		{
+			ID:          "1",
+			Title:       "Introduction to Golang",
+			Description: "Come join us for a chance to learn how golang works and get to eventually try it out",
+		},
+		{
+			ID:          "2",
+			Title:       "Introduction to Golang",
+			Description: "Come join us for a chance to learn how golang works and get to eventually try it out",
+		},
+		{
+			ID:          "3",
+			Title:       "Introduction to Golang",
+			Description: "Come join us for a chance to learn how golang works and get to eventually try it out",
+		},
+	}
+}
+
 func createEvent(w http.ResponseWriter, r *http.Request) {
 	var newEvent event
 	// Convert r.Body into a readable formart
@@ -103,6 +123,7 @@ func deleteEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	initEvents()
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
 	router.HandleFunc("/event", createEvent).Methods("POST")
