@@ -2,4 +2,5 @@
 
 ```
 go get -u github.com/gorilla/mux
-``` cmd
+go get -u github.com/spf13/viper
+```
