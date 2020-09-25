@@ -88,10 +88,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(tokenString)
 	
-	// EncodeToken := json.NewEncoder(w).Encode(tokenString)
-	//w.Header().Set("Content-Type", "application/json")
-  	// w.Write(EncodeToken)
-	fmt.Fprintf(w, "Login tokenString: " + tokenString)
 }
 
 
