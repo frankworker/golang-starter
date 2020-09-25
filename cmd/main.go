@@ -6,9 +6,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	jwt "github.com/dgrijalva/jwt-go"
 )
 
 type event struct {
@@ -26,6 +29,71 @@ var events = allEvents{
 		Description: "Come join us for a chance to learn how golang works and get to eventually try it out",
 	},
 }
+
+// Secret key to uniquely sign the token
+var key []byte
+
+// Credential User's login information
+type Credential struct{
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Token jwt Standard Claim Object
+type Token struct {
+	Username string `json:"username"`
+	jwt.StandardClaims
+}
+
+// Create a dummy local db instance as a key value pair
+var userdb = map[string]string{
+	"user1": "password123",
+}
+
+// login user login function
+func login(w http.ResponseWriter, r *http.Request) {
+	// create a Credentials object
+	var creds Credential
+	// decode json to struct
+	err := json.NewDecoder(r.Body).Decode(&creds)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// verify if user exist or not
+	userPassword, ok := userdb[creds.Username]
+
+	// if user exist, verify the password
+	if !ok || userPassword != creds.Password {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Create a token object and add the Username and StandardClaims
+	var tokenClaim = Token {
+		Username: creds.Username,
+		StandardClaims: jwt.StandardClaims{
+			// Enter expiration in milisecond
+			ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+		},
+	}
+
+	// Create a new claim with HS256 algorithm and token claim
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaim )
+
+	tokenString, err := token.SignedString([]byte(viperEnvVariable("SECRET_KEY")))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	json.NewEncoder(w).Encode(tokenString)
+	
+	// EncodeToken := json.NewEncoder(w).Encode(tokenString)
+	//w.Header().Set("Content-Type", "application/json")
+  	// w.Write(EncodeToken)
+	fmt.Fprintf(w, "Login tokenString: " + tokenString)
+}
+
 
 // use viper package to read .env file
 // return the value of the key
@@ -56,6 +124,56 @@ func viperEnvVariable(key string) string {
   }
 
   return value
+}
+
+// dashboard User's personalized dashboard
+func dashboard(w http.ResponseWriter, r *http.Request) {
+	// get the bearer token from the reuest header
+	bearerToken := r.Header.Get("Authorization")
+
+	// validate token, it will return Token and error
+	token, err := ValidateToken(bearerToken)
+
+	if err != nil {
+		// check if Error is Signature Invalid Error
+		if err == jwt.ErrSignatureInvalid {
+			// return the Unauthorized Status
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		// Return the Bad Request for any other error
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Validate the token if it expired or not
+	if !token.Valid {
+		// return the Unauthoried Status for expired token
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Type cast the Claims to *Token type
+	user := token.Claims.(*Token)
+
+	// send the username Dashboard message
+	json.NewEncoder(w).Encode(fmt.Sprintf("%s Dashboard", user.Username))
+}
+
+
+
+// ValidateToken validates the token with the secret key and return the object
+func ValidateToken(bearerToken string) (*jwt.Token, error) {
+
+	// format the token string
+	tokenString := strings.Split(bearerToken, " ")[1]
+
+	// Parse the token with tokenObj
+	token, err := jwt.ParseWithClaims(tokenString, &Token{}, func(token *jwt.Token)(interface{}, error) {
+		return key, nil
+	})
+
+	// return token and err
+	return token, err
 }
 
 
@@ -160,6 +278,8 @@ func main() {
 	initEvents()
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homeLink)
+	router.HandleFunc("/login", login).Methods("POST")
+	router.HandleFunc("/me", dashboard).Methods("GET")
 	router.HandleFunc("/event", createEvent).Methods("POST")
 	router.HandleFunc("/events", getAllEvents).Methods("GET")
 	router.HandleFunc("/events/{id}", getOneEvent).Methods("GET")
