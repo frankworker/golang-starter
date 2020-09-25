@@ -50,6 +50,12 @@ var userdb = map[string]string{
 	"user1": "password123",
 }
 
+// assign the secret key to key variable on program's first run
+func init() {
+	// read the secret_key from the .env file
+	key = []byte(viperEnvVariable("JWT_SECRET_KEY"))
+}
+
 // login user login function
 func login(w http.ResponseWriter, r *http.Request) {
 	// create a Credentials object
@@ -81,7 +87,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	// Create a new claim with HS256 algorithm and token claim
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaim )
 
-	tokenString, err := token.SignedString([]byte(viperEnvVariable("JWT_SECRET_KEY")))
+	tokenString, err := token.SignedString(key)
 
 	if err != nil {
 		log.Fatal(err)
