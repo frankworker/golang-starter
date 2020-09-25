@@ -81,7 +81,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	// Create a new claim with HS256 algorithm and token claim
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaim )
 
-	tokenString, err := token.SignedString([]byte(viperEnvVariable("SECRET_KEY")))
+	tokenString, err := token.SignedString([]byte(viperEnvVariable("JWT_SECRET_KEY")))
 
 	if err != nil {
 		log.Fatal(err)
